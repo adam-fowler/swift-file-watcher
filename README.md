@@ -37,4 +37,4 @@ let fileWatcher = FileWatcher(paths: ["test", "test2"])
 
 ### Considerations
 
-FileWatcher provides you with the raw stream of file system events. It does not attempt to massage the data. So operations like delete on a macOS in many cases will be reported as a move (delete moves the file to waste basket). File operations on macOS that modify a file can sometimes also report a created event.
+FileWatcher provides you with the raw stream of file system events. It does not attempt to massage the data. So operations like delete on a macOS may be reported as a move (delete moves the file to waste basket). File operations on macOS that modify a file can sometimes also report a created event.

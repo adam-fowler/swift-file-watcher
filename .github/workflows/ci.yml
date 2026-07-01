@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-ci
+  cancel-in-progress: true
+
+jobs:
+  macOS:
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+    - name: Select appropriate Xcode version
+      uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+      with:
+        xcode-version: latest-stable
+    - name: Checkout
+      uses: actions/checkout@v7
+    - name: Build
+      run: |
+        swift test
+  Linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        swift: ["swift:6.1", "swift:6.2", "swift:6.3"]
+    container:
+      image: ${{ matrix.swift }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Test
+        run: |
+          swift test
