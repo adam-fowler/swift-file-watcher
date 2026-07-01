@@ -4,14 +4,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "FileWatcher",
+    name: "swift-file-watcher",
     platforms: [.macOS(.v15)],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
-        .library(
-            name: "FileWatcher",
-            targets: ["FileWatcher"]
-        )
+        .library(name: "FileWatching", targets: ["FileWatching"])
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-system.git", from: "1.0.0")
@@ -20,7 +17,7 @@ let package = Package(
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "FileWatcher",
+            name: "FileWatching",
             dependencies: [
                 .product(name: "SystemPackage", package: "swift-system"),
                 .target(name: "CInotify", condition: .when(platforms: [.linux])),
@@ -28,8 +25,8 @@ let package = Package(
         ),
         .systemLibrary(name: "CInotify"),
         .testTarget(
-            name: "FileWatcherTests",
-            dependencies: ["FileWatcher"]
+            name: "FileWatchingTests",
+            dependencies: ["FileWatching"]
         ),
     ],
     swiftLanguageModes: [.v6]
