@@ -95,12 +95,14 @@ final class LinuxFileWatcher: PlatformFileWatcher {
                                     self.unwatchPath(path: folderName.appending(filename))
                                 }
                             } else {
-                                if !iNotifyEventMask.intersection([.inModify, .inMoveSelf]).isEmpty {
+                                if !iNotifyEventMask.intersection([.inModify]).isEmpty {
                                     parent.continuation.yield(.changed(folderName.appending(filename)))
-                                } else if !iNotifyEventMask.intersection([.inCreate, .inMovedTo]).isEmpty {
+                                } else if !iNotifyEventMask.intersection([.inCreate]).isEmpty {
                                     parent.continuation.yield(.added(folderName.appending(filename)))
-                                } else if !iNotifyEventMask.intersection([.inDelete, .inDeleteSelf, .inMovedFrom]).isEmpty {
+                                } else if !iNotifyEventMask.intersection([.inDelete, .inDeleteSelf]).isEmpty {
                                     parent.continuation.yield(.deleted(folderName.appending(filename)))
+                                } else if !iNotifyEventMask.intersection([.inMovedTo, .inMovedFrom]).isEmpty {
+                                    parent.continuation.yield(.moved(folderName.appending(filename)))
                                 }
                             }
                         }

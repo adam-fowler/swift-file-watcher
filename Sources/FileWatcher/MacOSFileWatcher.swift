@@ -78,9 +78,7 @@ final class MacOSFileWatcher: PlatformFileWatcher {
         let paths = Unmanaged<CFArray>.fromOpaque(eventPaths).takeUnretainedValue() as! [String]
 
         (0..<numEvents).indices.forEach { index in
-            if let event = fileSystemWatcher.convertEvent(paths[index], flags: eventFlags[index]) {
-                fileSystemWatcher.continuation.yield(event)
-            }
+            fileSystemWatcher.processEvent(paths[index], flags: eventFlags[index], id: eventIds[index])
         }
     }
 
@@ -93,20 +91,21 @@ final class MacOSFileWatcher: PlatformFileWatcher {
         Unmanaged<MacOSFileWatcher>.fromOpaque(info!).release()
     }
 
-    func convertEvent(_ eventPath: String, flags: FSEventStreamEventFlags) -> FileWatcher.Event? {
-        print("\(eventPath), event: \(String(flags, radix: 16))")
-        guard flags & FSEventStreamEventFlags(kFSEventStreamEventFlagItemIsDir) == 0 else { return nil }
-        if flags & FSEventStreamEventFlags(kFSEventStreamEventFlagItemRemoved) != 0 {
-            return .deleted(.init(eventPath))
-        }
+    func processEvent(_ eventPath: String, flags: FSEventStreamEventFlags, id: FSEventStreamEventId) {
+        print("\(id): \(eventPath), event: \(String(flags, radix: 16))")
+        guard flags & FSEventStreamEventFlags(kFSEventStreamEventFlagItemIsDir) == 0 else { return }
         if flags & FSEventStreamEventFlags(kFSEventStreamEventFlagItemCreated) != 0 {
-            return .added(.init(eventPath))
+            self.continuation.yield(.created(.init(eventPath)))
         }
         if flags & FSEventStreamEventFlags(kFSEventStreamEventFlagItemModified) != 0 {
-            return .changed(.init(eventPath))
+            self.continuation.yield(.modified(.init(eventPath)))
         }
-        return nil
-
+        if flags & FSEventStreamEventFlags(kFSEventStreamEventFlagItemRemoved) != 0 {
+            self.continuation.yield(.deleted(.init(eventPath)))
+        }
+        if flags & FSEventStreamEventFlags(kFSEventStreamEventFlagItemRenamed) != 0 {
+            self.continuation.yield(.moved(.init(eventPath)))
+        }
     }
 }
 

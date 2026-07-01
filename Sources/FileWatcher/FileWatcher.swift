@@ -8,18 +8,23 @@
 import SystemPackage
 
 public struct FileWatcher: Sendable {
-    public enum Event: Equatable {
-        case added(FilePath)
+    public enum Event: Equatable, Sendable {
+        case created(FilePath)
         case deleted(FilePath)
-        case changed(FilePath)
+        case modified(FilePath)
+        case moved(FilePath)
     }
     public let paths: [FilePath]
+
+    public init(path: FilePath) {
+        self.paths = [path]
+    }
 
     public init(paths: [FilePath]) {
         self.paths = paths
     }
 
-    public func watch<Value>(_ operation: @Sendable @escaping (AsyncStream<Event>) async throws -> Value) async throws -> Value {
+    public func watch<Value>(_ operation: (AsyncStream<Event>) async throws -> Value) async throws -> Value {
         let (stream, cont) = AsyncStream.makeStream(of: Event.self)
 
         #if os(macOS)
@@ -30,14 +35,15 @@ public struct FileWatcher: Sendable {
         #error("Unsupported platform")
         #endif
 
-        return try await withThrowingTaskGroup(of: Void.self) { group in
-            group.addTask {
-                try await fileWatcher.watch()
+        return try await withoutActuallyEscaping(operation) { operation in
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    try await fileWatcher.watch()
+                }
+                let value = try await operation(stream)
+                group.cancelAll()
+                return value
             }
-            let value = try await operation(stream)
-            group.cancelAll()
-            return value
         }
     }
-
 }
