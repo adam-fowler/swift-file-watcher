@@ -92,7 +92,7 @@ final class MacOSFileWatcher: PlatformFileWatcher {
     }
 
     func processEvent(_ eventPath: String, flags: FSEventStreamEventFlags, id: FSEventStreamEventId) {
-        print("\(id): \(eventPath), event: \(String(flags, radix: 16))")
+        //print("\(id): \(eventPath), event: \(String(flags, radix: 16))")
         guard flags & FSEventStreamEventFlags(kFSEventStreamEventFlagItemIsDir) == 0 else { return }
         if flags & FSEventStreamEventFlags(kFSEventStreamEventFlagItemCreated) != 0 {
             self.continuation.yield(.created(.init(eventPath)))
