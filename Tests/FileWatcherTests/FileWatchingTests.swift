@@ -1,4 +1,4 @@
-import FileWatcher
+import FileWatching
 import Foundation
 import SystemPackage
 import Testing
