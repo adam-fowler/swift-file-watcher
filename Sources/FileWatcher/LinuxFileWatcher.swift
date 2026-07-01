@@ -95,10 +95,10 @@ final class LinuxFileWatcher: PlatformFileWatcher {
                                     self.unwatchPath(path: folderName.appending(filename))
                                 }
                             } else {
-                                if !iNotifyEventMask.intersection([.inModify]).isEmpty {
-                                    parent.continuation.yield(.changed(folderName.appending(filename)))
-                                } else if !iNotifyEventMask.intersection([.inCreate]).isEmpty {
-                                    parent.continuation.yield(.added(folderName.appending(filename)))
+                                if iNotifyEventMask.contains(.inModify) {
+                                    parent.continuation.yield(.modified(folderName.appending(filename)))
+                                } else if iNotifyEventMask.contains(.inCreate) {
+                                    parent.continuation.yield(.created(folderName.appending(filename)))
                                 } else if !iNotifyEventMask.intersection([.inDelete, .inDeleteSelf]).isEmpty {
                                     parent.continuation.yield(.deleted(folderName.appending(filename)))
                                 } else if !iNotifyEventMask.intersection([.inMovedTo, .inMovedFrom]).isEmpty {
@@ -136,7 +136,6 @@ final class LinuxFileWatcher: PlatformFileWatcher {
 
         mutating func watchPath(path: FilePath, for mask: InotifyEventMask) {
             guard self.pathToDescriptor[path] == nil else { return }
-            print("Watch: \(path)")
             let wd = inotify_add_watch(fileDescriptor, path.string, mask.rawValue)
             self.pathToDescriptor[path] = wd
             self.descriptorToPath[wd] = path

@@ -3,6 +3,7 @@ import Foundation
 import SystemPackage
 import Testing
 
+@Suite("FileWatcher Tests", .serialized)
 struct FileWatcherTests {
     @Test(.disabled()) func testEvents() async throws {
         let watcher = FileWatcher(paths: ["test"])
@@ -63,9 +64,11 @@ struct FileWatcherTests {
                     }
                 }
             }
-            try await Task.sleep(for: .seconds(0.5))
-            let fd = fopen(tmpFile.string, "w")
-            fclose(fd)
+            try await Task.sleep(for: .seconds(1.0))
+            // create and close file
+            if let fd = fopen(tmpFile.string, "w") {
+                fclose(fd)
+            }
 
             try await group.waitForAll()
         }
@@ -100,6 +103,8 @@ struct FileWatcherTests {
                     }
                 }
             }
+            try await Task.sleep(for: .seconds(1.0))
+
             let fileHandle = FileHandle(forUpdatingAtPath: tmpFile.string)
             fileHandle?.write(.init("append some text".utf8))
             try fileHandle?.close()
@@ -132,7 +137,8 @@ struct FileWatcherTests {
                     }
                 }
             }
-            try await Task.sleep(for: .seconds(0.5))
+            try await Task.sleep(for: .seconds(1.0))
+
             try FileManager.default.removeItem(atPath: tmpFile.string)
 
             try await group.waitForAll()
@@ -165,7 +171,7 @@ struct FileWatcherTests {
                     }
                 }
             }
-            try await Task.sleep(for: .seconds(0.5))
+            try await Task.sleep(for: .seconds(1.0))
             try FileManager.default.moveItem(
                 at: URL(filePath: tmpFile.string, directoryHint: .notDirectory),
                 to: URL(filePath: tmpFile2.string, directoryHint: .notDirectory)
@@ -218,10 +224,71 @@ struct FileWatcherTests {
                     }
                 }
             }
-            try await Task.sleep(for: .seconds(0.5))
+            try await Task.sleep(for: .seconds(1.0))
 
             try "hello".write(toFile: tmpFile.string, atomically: false, encoding: .utf8)
             try "hello".write(toFile: tmpFile2.string, atomically: false, encoding: .utf8)
+            try FileManager.default.removeItem(atPath: tmpFile.string)
+            try FileManager.default.removeItem(atPath: tmpFile2.string)
+
+            try await group.waitForAll()
+        }
+    }
+
+    @Test
+    func testSubFolders() async throws {
+        let tmpDir = FilePath(FileManager.default.temporaryDirectory.path).appending("testSubFolder")
+        let subDir = tmpDir.appending("subDir")
+        let tmpFile = subDir.appending("test.txt")
+        try FileManager.default.createDirectory(atPath: subDir.string, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(atPath: subDir.string)
+            try? FileManager.default.removeItem(atPath: tmpDir.string)
+        }
+        try await Task.sleep(for: .seconds(0.5))
+
+        let watcher = FileWatcher(path: tmpDir)
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await withDeadline(deadline: .now + .seconds(5)) {
+                    try await watcher.watch { events in
+                        try await watcher.watch { events in
+                            var createdFiles = Set<String>()
+                            var deletedFiles = Set<String>()
+                            loop: for try await event in events {
+                                switch event {
+                                case .created(let file):
+                                    guard let name = file.lastComponent else { continue }
+                                    createdFiles.insert(name.string)
+                                case .deleted(let file):
+                                    guard let name = file.lastComponent else { continue }
+                                    deletedFiles.insert(name.string)
+                                    if deletedFiles.count == 2 {
+                                        break loop
+                                    }
+                                default:
+                                    break
+                                }
+                            }
+                            #expect(createdFiles == ["test.txt", "test2.txt"])
+                            #expect(deletedFiles == ["test.txt", "test2.txt"])
+                        }
+                    }
+                }
+            }
+            try await Task.sleep(for: .seconds(1.0))
+
+            try "hello".write(toFile: tmpFile.string, atomically: false, encoding: .utf8)
+
+            let subSubDir = subDir.appending("subSubDir")
+            try FileManager.default.createDirectory(atPath: subSubDir.string, withIntermediateDirectories: true)
+            defer {
+                try? FileManager.default.removeItem(atPath: subSubDir.string)
+            }
+            let tmpFile2 = subSubDir.appending("test2.txt")
+
+            try "hello".write(toFile: tmpFile2.string, atomically: false, encoding: .utf8)
+
             try FileManager.default.removeItem(atPath: tmpFile.string)
             try FileManager.default.removeItem(atPath: tmpFile2.string)
 
