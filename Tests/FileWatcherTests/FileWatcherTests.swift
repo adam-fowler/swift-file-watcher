@@ -276,7 +276,7 @@ struct FileWatcherTests {
                     }
                 }
             }
-            try await Task.sleep(for: .seconds(1.0))
+            try await Task.sleep(for: .seconds(0.5))
 
             try "hello".write(toFile: tmpFile.string, atomically: false, encoding: .utf8)
 
@@ -287,6 +287,9 @@ struct FileWatcherTests {
             }
             let tmpFile2 = subSubDir.appending("test2.txt")
 
+            // The is a small amount of time between creating a directory and it being added to the directories
+            // to watch on Linux
+            try await Task.sleep(for: .seconds(0.25))
             try "hello".write(toFile: tmpFile2.string, atomically: false, encoding: .utf8)
 
             try FileManager.default.removeItem(atPath: tmpFile.string)
